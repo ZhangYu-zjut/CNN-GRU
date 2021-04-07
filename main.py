@@ -50,7 +50,6 @@ def train(dataloader, model, optimizer, criterion):
     model.train()
     total_loss = 0
     n_samples = 0
-    # criterion = nn.MSELoss()
     count = 0
     """
     data shape:
@@ -60,21 +59,13 @@ def train(dataloader, model, optimizer, criterion):
     """
     for j, (data, irr_x, irr_y) in enumerate(dataloader):
         target = irr_y
-        if (j == 0):
-            # print("data is",data)
-            # print("data size is",data.size())
-            pass
-            # print("target.size(1) is",target.size(1))
         if (opt.cuda):
             irr_x = irr_x.cuda()
             data = data.cuda()
             target = target.cuda()
         optimizer.zero_grad()
-        # with torch.no_grad():
 
         target = target.reshape(-1, 1)
-        # ipdb.set_trace()
-        #print("irr_x.size()",irr_x.size())
         predict = model(data,irr_x)
         target = target.to(torch.float32)
         if (j < 2):
@@ -85,17 +76,12 @@ def train(dataloader, model, optimizer, criterion):
             pass
 
         loss = criterion(predict, target)
-        # print("data is",data)
-        # print("predict is",predict)
-        # print("loss is",loss)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         n_samples += target.size(0)
         count += 1
     loss_item.append(total_loss)
-    # val_loss, val_rae, val_rse = evaluate(val_loader, model,evaluateL1, evaluateL2)
-    # print("loss is",loss.item())
     return 1.0 * total_loss / n_samples
     pass
 
@@ -115,22 +101,10 @@ def evaluate(dataloader, model, evaluateL1, evaluateL2):
         data = data.cuda()
         target = target.cuda()
         irr_data_x = irr_data_x.cuda()
-        """
-        try:
-            output = model(data)
-        except RuntimeError as exception:
-            if "out of memory" in str(exception):
-                print("WARNING: out of memory")
-                if hasattr(torch.cuda, 'empty_cache'):
-                    torch.cuda.empty_cache()
-            else:
-                raise exception
-        """
         output = model(data,irr_data_x)
         target = target.reshape(-1, 1)
         # concatnate the predict and target
         if predict is None:
-            # print("predict size is",predict.size())
             predict = output
             target_all = target
 
@@ -138,7 +112,6 @@ def evaluate(dataloader, model, evaluateL1, evaluateL2):
             predict = torch.cat((predict, output))
             target_all = torch.cat((target_all, target))
             pass
-        # print("output size",output.size(),"target size:",target.size())
         total_loss_L1 += evaluateL1(output, target).item()
         total_loss_L2 += evaluateL2(output, target).item()
         total_sample += opt.batch_size
@@ -165,28 +138,14 @@ def predict_vis(dataloader, dataset):
     predict_list = []
     gt_list = []
     for ii, (data, irr_data_x,target) in enumerate(dataloader):
-        # original is data.cuda()
         data = data.cuda()
         irr_data_x = irr_data_x.cuda()
         target = target.cuda()
         output = model(data,irr_data_x)
         target = target.reshape(-1, 1)
-        """
-        # concatnate the predict and target
-        if predict is None:                                                   
-            #print("predict size is",predict.size())
-            predict = output
-            target_all = target
-        else:
-            predict = torch.cat((predict, output))
-            target_all = torch.cat((target_all, target))
-        pass
-        """
         test_min = dataset.min
         test_max = dataset.max
 
-        # print("min is",test_min)
-        # print("max is",test_max)
         output_numpy = output.cpu().data.numpy()
         gt_numpy = target.cpu().data.numpy()
 
@@ -195,24 +154,18 @@ def predict_vis(dataloader, dataset):
         predict_list.append(output_numpy)
         gt_list.append(gt_numpy)
         pass
-    # 37*32+16=1200
-    # print("predict:",predict_list)
-    # print("ground truth:",gt_list)
+
     p_len = len(predict_list[0])  # 32
     g_len = len(gt_list[0])  # 32
-    # print(p_len)
     predict_list = np.array(predict_list[0]).squeeze()
     gt_list = np.array(gt_list[0]).squeeze()
 
-    # plt.figure()
-    # x:(32,) predict(32,)
     x = np.array([i for i in range(opt.batch_size)])
     fig, ax = plt.subplots()
     predict_line, = ax.plot(x, predict_list, label='predict value')
     gt_line, = ax.plot(x, gt_list, label='ground truth value')
     ax.legend()
     ax.grid(True)
-    # plt.plot(predict_list,gt_list)
 
     plt.xlabel("time")
     plt.ylabel("value")
@@ -221,14 +174,12 @@ def predict_vis(dataloader, dataset):
     plt.show()
     pass
 
-    # visualize the loss and MSE error.
-    def visualize(epoch_list, loss_list):
-        vis = visdom.Visdom(env='loss curve')
-        vis.line(X=epoch_list, Y=loss_list, win='loss',
-                 opts={'title': 'loss curve', 'xlabel': 'epoch', 'ylabel': 'loss'})
-        pass
-
-    # save the train and val loss data
+# visualize the loss and MSE error.
+def visualize(epoch_list, loss_list):
+    vis = visdom.Visdom(env='loss curve')
+    vis.line(X=epoch_list, Y=loss_list, win='loss',
+            opts={'title': 'loss curve', 'xlabel': 'epoch', 'ylabel': 'loss'})
+    pass
 
 
 def save(data):
@@ -245,11 +196,6 @@ if __name__ == "__main__":
     save_result_path = "./save/%s/" % (opt.save_date)
     if (os.path.exists(save_result_path) == False):
         os.mkdir(save_result_path)
-    # model = tv.models.resnet18(pretrained=True)
-    # model.fc = nn.Linear(2048,1)
-    # model = ResNet18(num_classes=1)
-    # model.apply(weight_init)
-    #import os 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(opt.gpu)
     device = torch.device('cuda')
     torch.manual_seed(1234)
@@ -259,15 +205,17 @@ if __name__ == "__main__":
                  gru_batch_size=opt.batch_size,gru_output_dim=1,gru_layer_num=2)
     model = model.cuda('cuda:'+str(opt.gpu))
 
-    # print("model is",model)
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
     # add the scheduler which is used for learning rate adjusting.
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    """
+    Process:
     # Get the data
     # define the model
     # Define the other parameters
     # train the model
     # evaluate and test the model
+    """
     train_data = DataSet(opt.train_path, train=True, test=False)
     val_data = DataSet(opt.train_path, train=False, test=False)
     test_data = DataSet(opt.test_path, train=False, test=True)
@@ -286,16 +234,11 @@ if __name__ == "__main__":
 
     if opt.cuda:
         torch.cuda.set_device(opt.gpu)
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # inputs = inputs.to(device)
+
     if torch.cuda.is_available():
         if opt.cuda == False:
             print("Warning: You have GPU but you did't set to GPU train!")
         else:
-            # train_loader = train_loader.cuda()
-            # val_loader = val_loader.cuda()
-            # test_loader = test_loader.cuda()
-            # optimizer = optimizer.cuda()
             model = model.cuda()
 
     torch.manual_seed(opt.seed)
@@ -335,10 +278,8 @@ if __name__ == "__main__":
             row2_list.append(val_loss)
         loss_list.append(row1_list)
         loss_list.append(row2_list)
-        # train_loss_list.append(train_loss)
-        # val_loss_list.append(val_loss)
+
         save(loss_list)
-    # train(model,train_loader,optimizer, criterion)
     except KeyboardInterrupt:
         print("-" * 90)
         print("Exiting from training early!!!")
@@ -349,7 +290,6 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(f))
     test_loss, test_rae, test_rse, test_corr = evaluate(test_loader, model, evaluateL1, evaluateL2)
 
-    # print("test data min is{:4d}, max is{:4d}".format(test_data.min,test_data.max))
     print("test loss: {:5.2f} | test rae: {:5.2f} | test rse: {:5.2f} | test corr:{:5.4f}".format(test_loss, test_rae,
                                                                                                   test_rse, test_corr))
     predict_vis(test_loader, test_data)

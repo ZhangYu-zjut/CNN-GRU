@@ -73,8 +73,6 @@ def test(model,dataloader,dataset,opt):
         target = target.reshape(-1,1)
         test_min = dataset.min
         test_max = dataset.max
-        #print("min is",test_min)
-        #print("max is",test_max)
         output_numpy = output.cpu().data.numpy()
         gt_numpy = target.cpu().data.numpy()
 
@@ -93,7 +91,6 @@ def test(model,dataloader,dataset,opt):
         else:
             predict_array = np.concatenate((predict_array,output_numpy))
             gt_array = np.concatenate((gt_array, gt_numpy))
-    #predict_array = np.array(predict_list).reshape(-1,1200)
     print("predict array is:",predict_array)
     print(len(predict_array))
     print("actuall array is:",gt_array)
